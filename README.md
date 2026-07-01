@@ -59,12 +59,106 @@ blocks already known to be close to the requested size.
 Grouping blocks by size makes allocation fast and keeps similar sizes
 together, which reduces fragmentation compared to the explicit list.
 
-## Project Specifications
+## Design & specifications
 
-- Segregated Free List:
-- Instant Coalescing:
-- Block definition
-- Byte alignment?
+### Alignment
+
+Payloads are aligned to **16 bytes** to keep it consistent with the project
+that was completed in my class (following CS:APP). Additionally that's the 
+alignment real `malloc` guarantees and the minimum that works for any C type.
+
+### Block layout
+
+The heap is a contiguous run of **blocks**, each framed by an 8-byte
+**header** and an 8-byte **footer** (boundary tags). Both store the block's
+size; because sizes are a multiple of 16, the low bits of the size word are
+free to reuse as flags (e.g. the allocated bit).
+
+```
+      addr ≡ 8 (mod 16)      addr ≡ 0 (mod 16)
+            │                      │
+            v                      v
+          ┌────────┬───────────────────────────┬────────┐
+          │ header │          payload          │ footer │
+          │  8 B   │  (16-aligned, user data)  │  8 B   │
+          └────────┴───────────────────────────┴────────┘
+```
+
+A **free** block reuses the first 16 bytes of its payload to store the
+`next`/`prev` pointers of its free list — the lists are *intrusive*, so they
+cost no extra memory.
+
+```
+   free block
+  ┌────────┬────────┬────────┬────────┐
+  │ header │  next  │  prev  │ footer │
+  │  8 B   │  8 B   │  8 B   │  8 B   │
+  └────────┴────────┴────────┴────────┘
+```
+
+### Block sizes
+
+The **minimum block size is 32 bytes**, and every block size is a multiple of
+16. The minimum is set by the free block above: even a 1-byte request must
+leave room for a header, two list pointers, and a footer once it's freed.
+
+### Boundary tags & navigation
+
+Storing the size in both the header and footer lets the allocator walk the
+heap in either direction:
+
+- **Next block:** `header + block_size` lands on the next header.
+- **Previous block:** `header - 8` reads the previous block's footer, giving
+  its size and therefore its header.
+
+Bidirectional navigation is what makes coalescing possible.
+
+### Segregated free lists
+
+Free blocks are indexed by **size class** into an array of list heads
+(`NUM_SIZE_CLASSES` buckets). Classes are roughly power-of-two ranges
+(`≤32`, `33–64`, `65–128`, …), with the last bucket a catch-all for everything
+larger. New free blocks are pushed onto the **head** of their bucket (LIFO
+insertion, O(1)).
+
+### Placement & splitting
+
+- **Fit:** first-fit *within the size-class bucket*. Because a bucket only
+  holds blocks near the requested size, first-fit there approximates a
+  global best-fit while staying near O(1).
+- **Search:** start at the bucket for the requested size; if it's empty or has
+  no fit, fall through to larger buckets.
+- **Splitting:** if the chosen block is larger than needed, split off the
+  remainder and return it to the free lists — but only if that remainder is at
+  least the 32-byte minimum. Otherwise hand over the whole block.
+
+### Coalescing
+
+Coalescing is **immediate**: on every `free`, the block is merged with any
+free physical neighbor on the left and/or right before being inserted. Using
+the previous/next block's allocated bit, there are four cases:
+
+| Left neighbor | Right neighbor | Result                     |
+| ------------- | -------------- | -------------------------- |
+| allocated     | allocated      | no merge — insert as-is    |
+| allocated     | free           | merge with right           |
+| free          | allocated      | merge with left            |
+| free          | free           | merge all three into one   |
+
+Merging removes the free neighbor(s) from their buckets, rewrites the combined
+block's header/footer, and inserts the result into the correct bucket.
+
+### Growing the heap
+
+When no bucket can satisfy a request, the allocator asks the OS for more
+memory (via `sbrk`/`mmap`), growing by `max(request, CHUNKSIZE)` (default 4 KB)
+to amortize syscalls. The heap is framed by a **prologue** and **epilogue**
+sentinel so the first and last real blocks never need special-casing during
+navigation or coalescing.
+
+### Planned optimization
+
+TBD
 
 ## Layout
 
