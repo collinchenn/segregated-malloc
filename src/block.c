@@ -8,6 +8,10 @@
  *   };
  *
  */
+
+#define HEADER_SIZE 8
+#define FOOTER_SIZE 8
+
 struct block {
     size_t header;
 };
@@ -19,16 +23,28 @@ size_t align_up(size_t size) {
 }
 
 size_t block_size_for_payload(size_t payload_size) {
-    (void)payload_size;
-    return 0;
+    return HEADER_SIZE + align_up(payload_size) + FOOTER_SIZE;
 }
 
-size_t block_get_size(const block_t *b) { (void)b; return 0; }
-bool   block_is_free(const block_t *b)  { (void)b; return false; }
-void  *block_payload(block_t *b)        { (void)b; return NULL; }
+size_t block_get_size(const block_t *b) {  
+    return b->header & ~(size_t)0xF;
+}
 
-void block_set_size(block_t *b, size_t size) { (void)b; (void)size; }
-void block_set_free(block_t *b, bool is_free) { (void)b; (void)is_free; }
+bool   block_is_free(const block_t *b)  {
+    return (b->header & (size_t)0x1) == 0;
+}
+
+void  *block_payload(block_t *b)        {
+    return (char*)b + HEADER_SIZE;
+}
+
+void block_set_size(block_t *b, size_t size) { 
+    b->header = size | (b->header & (size_t)0xF);
+}
+
+void block_set_free(block_t *b, bool is_free) { 
+    b->header = (size_t)(!is_free) | (b->header & ~(size_t)0x1);
+}
 
 block_t *block_next(block_t *b) { (void)b; return NULL; }
 block_t *block_prev(block_t *b) { (void)b; return NULL; }
