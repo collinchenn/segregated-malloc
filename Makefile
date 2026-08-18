@@ -13,8 +13,9 @@ OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 LIB    := $(OBJ_DIR)/libsegmalloc.a
 TEST   := $(OBJ_DIR)/test_allocator
 TEST_BLOCK := $(OBJ_DIR)/test_block
+TEST_SEGLIST := $(OBJ_DIR)/test_seglist
 
-.PHONY: all clean test test-block
+.PHONY: all clean test test-block test-seglist
 
 all: $(LIB)
 
@@ -35,6 +36,11 @@ test: $(LIB)
 test-block: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_block.c $(LIB) -o $(TEST_BLOCK)
 	./$(TEST_BLOCK)
+
+# Build and run the seglist-layer unit tests
+test-seglist: $(LIB)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_seglist.c $(LIB) -o $(TEST_SEGLIST)
+	./$(TEST_SEGLIST)
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
