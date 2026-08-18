@@ -12,8 +12,9 @@ OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
 LIB    := $(OBJ_DIR)/libsegmalloc.a
 TEST   := $(OBJ_DIR)/test_allocator
+TEST_BLOCK := $(OBJ_DIR)/test_block
 
-.PHONY: all clean test
+.PHONY: all clean test test-block
 
 all: $(LIB)
 
@@ -29,6 +30,11 @@ $(LIB): $(OBJS)
 test: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_allocator.c $(LIB) -o $(TEST)
 	./$(TEST)
+
+# Build and run the block-layer unit tests
+test-block: $(LIB)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_block.c $(LIB) -o $(TEST_BLOCK)
+	./$(TEST_BLOCK)
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)

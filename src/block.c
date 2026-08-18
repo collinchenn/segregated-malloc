@@ -13,8 +13,9 @@ struct block {
 };
 
 size_t align_up(size_t size) {
-    (void)size;
-    return 0;
+    // we must ensure that the payloads are 16-byte aligned
+    // so we need to round up to the nearest 16th byte 
+    return (size + 15) & ~(size_t)15;
 }
 
 size_t block_size_for_payload(size_t payload_size) {
