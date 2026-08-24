@@ -23,6 +23,9 @@ int seg_malloc_init(void) {
     if (heap_init() == -1) return -1;
 
     seglist_init();
+    heap_extend(PAD);
+
+    return 0;
 }
 
 void *seg_malloc(size_t size) {
