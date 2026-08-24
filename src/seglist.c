@@ -27,20 +27,51 @@ int seglist_index_for_size(size_t size) {
         threshold *= 2;
     }
     return NUM_SIZE_CLASSES - 1;
-
+    
 }
 
 void seglist_insert(block_t *b) {
-    int index = seglist_index_for_size(block_get_size(b));
+    int i = seglist_index_for_size(block_get_size(b));
+    block_t *head = g_buckets[i];
+
+    node(b)->next = head;
+    node(b)->prev = NULL;
+
+    if (head != NULL)
+        node(head)->prev = b;
+
+    g_buckets[i] = b;
 }
 
 void seglist_remove(block_t *b) {
-    (void)b;
+    int i = seglist_index_for_size(block_get_size(b));
+    block_t *prev = node(b)->prev;
+    block_t *next = node(b)->next;
+
+    if (prev == NULL) {
+        g_buckets[i] = next;
+    } else {
+        node(prev)->next = next;
+    }
+
+    if (next != NULL)
+        node(next)->prev = prev;
+
 }
 
 block_t *seglist_find_fit(size_t size) {
-    (void)size;
-    return NULL; /* stub */
+    for (int i = seglist_index_for_size(size); i < NUM_SIZE_CLASSES; i++) {
+        block_t *head = g_buckets[i];
+
+        while (head != NULL) {
+            if (block_get_size(head) >= size)
+                return head;
+            
+            head = node(head)->next;
+        }
+    }
+
+    return NULL;
 }
 
 void seglist_dump(void) {
