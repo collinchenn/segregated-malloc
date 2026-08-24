@@ -15,7 +15,7 @@ TEST   := $(OBJ_DIR)/test_allocator
 TEST_BLOCK := $(OBJ_DIR)/test_block
 TEST_SEGLIST := $(OBJ_DIR)/test_seglist
 
-.PHONY: all clean test test-block test-seglist
+.PHONY: all clean test test-alloc test-block test-seglist test-all
 
 all: $(LIB)
 
@@ -27,8 +27,8 @@ $(OBJ_DIR)/%.o: $(SRC_DIR)/%.c | $(OBJ_DIR)
 $(LIB): $(OBJS)
 	ar rcs $@ $^
 
-# Build and run the test binary against the library
-test: $(LIB)
+# Build and run the full allocator (public API) tests
+test test-alloc: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_allocator.c $(LIB) -o $(TEST)
 	./$(TEST)
 
@@ -41,6 +41,9 @@ test-block: $(LIB)
 test-seglist: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_seglist.c $(LIB) -o $(TEST_SEGLIST)
 	./$(TEST_SEGLIST)
+
+# Build and run every layer's tests
+test-all: test-block test-seglist test-alloc
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
