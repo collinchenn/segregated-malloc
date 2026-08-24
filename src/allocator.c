@@ -3,6 +3,9 @@
 #include "block.h"
 #include "heap.h"
 
+#define PAD 8
+#define MIN_BLOCK 32
+
 // private APIs
 
 static void split_block(block_t *b, size_t size) {
@@ -17,7 +20,9 @@ static block_t *coalesce(block_t *b) {
 // public APIs
 
 int seg_malloc_init(void) {
-    return -1; /* stub */
+    if (heap_init() == -1) return -1;
+
+    seglist_init();
 }
 
 void *seg_malloc(size_t size) {
