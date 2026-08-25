@@ -29,8 +29,27 @@ int seg_malloc_init(void) {
 }
 
 void *seg_malloc(size_t size) {
-    (void)size;
-    return NULL; /* stub */
+    if (size == 0) return NULL;
+
+    size_t need = block_size_for_payload(size);
+    block_t *b = seglist_find_fit(need);
+    
+    if (b != NULL) {
+        // We were able to find a block for
+        // the requested payload size to malloc
+        seglist_remove(b);
+        split_block(b, need);
+
+    } else {
+        // We need to reqeust for more memory
+        // in order to fufill the request
+        b = heap_extend(need);
+        if (b == NULL) return NULL;
+        block_set_size(b, need);
+    }
+
+    block_set_free(b, false);
+    return block_payload(b);
 }
 
 void seg_free(void *ptr) {
