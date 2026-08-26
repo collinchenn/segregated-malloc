@@ -72,7 +72,7 @@ void seg_free(void *ptr) {
 
     // Left side is free - coalese-left
     block_t *left = block_prev(b);
-    if (block_is_free(left)) {
+    if ((char *)b > (char *)heap_start() + PAD && block_is_free(left)) {
         seglist_remove(left);
         size_t left_size = block_get_size(left);
 
@@ -83,7 +83,7 @@ void seg_free(void *ptr) {
 
     // Right side is free - coalese-right
     block_t *right = block_next(b);
-    if (block_is_free(right)) {
+    if ((char *)right < (char *)heap_end() && block_is_free(right)) {
         seglist_remove(right);
         size_t right_size = block_get_size(right);
 
