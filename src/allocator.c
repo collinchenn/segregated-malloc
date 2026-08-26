@@ -9,7 +9,19 @@
 // private APIs
 
 static void split_block(block_t *b, size_t size) {
-    (void)b; (void)size; /* TODO */
+    int remainder = block_get_size(b) - size;
+    
+    // Splitting the block leaves a chunk
+    // that is greater than the minimum
+    if (remainder >= MIN_BLOCK) {
+        block_set_size(b, size);
+
+        block_t* remainder_b = block_next(b);
+        block_set_size(remainder_b, remainder);
+        block_set_free(remainder_b, true);
+
+        seglist_insert(remainder_b);
+    }
 }
 
 static block_t *coalesce(block_t *b) {

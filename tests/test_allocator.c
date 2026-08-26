@@ -133,8 +133,8 @@ static void test_calloc(void) {
 
     unsigned char *p = seg_calloc(4, 25);
     CHECK(p != NULL);
-    bool all_zero = true;
-    for (int i = 0; i < 100; i++)
+    bool all_zero = p != NULL;
+    for (int i = 0; p != NULL && i < 100; i++)
         if (p[i] != 0) all_zero = false;
     CHECK(all_zero);
     CHECK(seg_heap_check() == 0);
@@ -154,8 +154,8 @@ static void test_realloc(void) {
 
     char *q = seg_realloc(p, 200);
     CHECK(q != NULL);
-    bool preserved = true;
-    for (int i = 0; i < 100; i++)
+    bool preserved = q != NULL;
+    for (int i = 0; q != NULL && i < 100; i++)
         if (q[i] != (char)i) preserved = false;
     CHECK(preserved);
     CHECK(seg_heap_check() == 0);
@@ -179,7 +179,8 @@ static void test_stress(void) {
     for (int i = 0; i < N; i++) {
         ptrs[i] = seg_malloc((size_t)(i * 8 + 1));
         CHECK(ptrs[i] != NULL);
-        memset(ptrs[i], i & 0xFF, (size_t)(i * 8 + 1));
+        if (ptrs[i] != NULL)
+            memset(ptrs[i], i & 0xFF, (size_t)(i * 8 + 1));
     }
     CHECK(seg_heap_check() == 0);
 
@@ -194,6 +195,7 @@ static void test_stress(void) {
 }
 
 int main(void) {
+    setvbuf(stdout, NULL, _IONBF, 0);
     printf("running allocator tests\n");
     test_init();
     test_basic_malloc_free();
