@@ -100,7 +100,7 @@ void *seg_calloc(size_t nmemb, size_t size) {
 
     size_t array_size = nmemb * size;
     void *payload = seg_malloc(array_size);
-    
+
     if (payload == NULL) 
         return NULL;
 
@@ -111,8 +111,26 @@ void *seg_calloc(size_t nmemb, size_t size) {
 }
 
 void *seg_realloc(void *ptr, size_t size) {
-    (void)ptr; (void)size;
-    return NULL; /* stub */
+    if (ptr == NULL)
+        return seg_malloc(size);
+
+    if (size == 0) {
+        seg_free(ptr);
+        return NULL;
+    }
+
+    block_t *b = block_from_payload(ptr);
+    size_t payload_size = block_get_payload_size(b);
+    if (payload_size < size) {
+        void *new_ptr = seg_malloc(size);
+        if (new_ptr == NULL) return NULL;
+
+        memcpy(new_ptr, ptr, payload_size);
+        seg_free(ptr);
+        ptr = new_ptr;
+    }
+
+    return ptr;
 }
 
 int seg_heap_check(void) {
