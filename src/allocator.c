@@ -65,7 +65,33 @@ void *seg_malloc(size_t size) {
 }
 
 void seg_free(void *ptr) {
-    (void)ptr;
+    if (ptr == NULL) return;
+
+    block_t *b = block_from_payload(ptr);
+    size_t b_size = block_get_size(b);
+
+    // Left side is free - coalese-left
+    block_t *left = block_prev(b);
+    if (block_is_free(left)) {
+        seglist_remove(left);
+        size_t left_size = block_get_size(left);
+
+        block_set_size(left, left_size + b_size);
+        b = left;
+        b_size += left_size;
+    }
+
+    // Right side is free - coalese-right
+    block_t *right = block_next(b);
+    if (block_is_free(right)) {
+        seglist_remove(right);
+        size_t right_size = block_get_size(right);
+
+        block_set_size(b, b_size + right_size);
+    }
+
+    block_set_free(b, true);
+    seglist_insert(b);
 }
 
 void *seg_calloc(size_t nmemb, size_t size) {
