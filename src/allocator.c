@@ -95,8 +95,19 @@ void seg_free(void *ptr) {
 }
 
 void *seg_calloc(size_t nmemb, size_t size) {
-    (void)nmemb; (void)size;
-    return NULL; /* stub */
+    if (nmemb != 0 && size > SIZE_MAX / nmemb) 
+        return NULL;
+
+    size_t array_size = nmemb * size;
+    void *payload = seg_malloc(array_size);
+    
+    if (payload == NULL) 
+        return NULL;
+
+    if (memset(payload, 0, array_size) == NULL)
+        return NULL;
+
+    return payload;
 }
 
 void *seg_realloc(void *ptr, size_t size) {

@@ -2,6 +2,7 @@
 #define ALLOCATOR_H
 
 #include <stddef.h>
+#include <string.h>
 
 int seg_malloc_init(void);
 void *seg_malloc(size_t size);
