@@ -32,6 +32,10 @@ size_t block_get_size(const block_t *b) {
     return b->header & ~(size_t)0xF;
 }
 
+size_t block_get_payload_size(const block_t *b) {
+    return block_get_size(b) - HEADER_SIZE - FOOTER_SIZE;
+}
+
 bool   block_is_free(const block_t *b)  {
     return (b->header & (size_t)0x1) == 0;
 }

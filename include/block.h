@@ -13,6 +13,7 @@ size_t align_up(size_t size);
 size_t block_size_for_payload(size_t payload_size);
 
 size_t block_get_size(const block_t *b);
+size_t block_get_payload_size(const block_t *b);
 bool   block_is_free(const block_t *b);
 void  *block_payload(block_t *b);
 
