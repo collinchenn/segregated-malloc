@@ -40,6 +40,11 @@ bool   block_is_free(const block_t *b)  {
     return (b->header & (size_t)0x1) == 0;
 }
 
+bool   block_is_consistent(const block_t *b) {
+    size_t footer = *(const size_t *)((const char *)b + block_get_size(b) - FOOTER_SIZE);
+    return b->header == footer;
+}
+
 void  *block_payload(block_t *b)        {
     return (char*)b + HEADER_SIZE;
 }
