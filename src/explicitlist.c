@@ -20,7 +20,11 @@ void freelist_init(void) {
 }
 
 void freelist_insert(block_t *b) {
-    (void)b;
+    block_t *old_head = g_free_list;
+    node(b)->next = old_head;
+    if (old_head) node(old_head)->prev = b;
+    node(b)->prev = NULL;
+    g_free_list = b;
 }
 
 void freelist_remove(block_t *b) {
