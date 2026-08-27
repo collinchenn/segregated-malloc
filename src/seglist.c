@@ -1,3 +1,4 @@
+#include "freelist.h"
 #include "seglist.h"
 #include <stdio.h>
 
@@ -14,7 +15,7 @@ static free_node_t *node(block_t *b) {
  * block in that bucket (intrusive doubly-linked list). */
 static block_t *g_buckets[NUM_SIZE_CLASSES];
 
-void seglist_init(void) {
+void freelist_init(void) {
     for (int i = 0; i < NUM_SIZE_CLASSES; i++)
         g_buckets[i] = NULL;
 }
@@ -27,10 +28,9 @@ int seglist_index_for_size(size_t size) {
         threshold *= 2;
     }
     return NUM_SIZE_CLASSES - 1;
-    
 }
 
-void seglist_insert(block_t *b) {
+void freelist_insert(block_t *b) {
     int i = seglist_index_for_size(block_get_size(b));
     block_t *head = g_buckets[i];
 
@@ -43,7 +43,7 @@ void seglist_insert(block_t *b) {
     g_buckets[i] = b;
 }
 
-void seglist_remove(block_t *b) {
+void freelist_remove(block_t *b) {
     int i = seglist_index_for_size(block_get_size(b));
     block_t *prev = node(b)->prev;
     block_t *next = node(b)->next;
@@ -56,17 +56,16 @@ void seglist_remove(block_t *b) {
 
     if (next != NULL)
         node(next)->prev = prev;
-
 }
 
-block_t *seglist_find_fit(size_t size) {
+block_t *freelist_find_fit(size_t size) {
     for (int i = seglist_index_for_size(size); i < NUM_SIZE_CLASSES; i++) {
         block_t *head = g_buckets[i];
 
         while (head != NULL) {
             if (block_get_size(head) >= size)
                 return head;
-            
+
             head = node(head)->next;
         }
     }
@@ -74,7 +73,7 @@ block_t *seglist_find_fit(size_t size) {
     return NULL;
 }
 
-int seglist_check(void) {
+int freelist_check(void) {
     for (int i = 0; i < NUM_SIZE_CLASSES; i++) {
         block_t *curr = g_buckets[i];
 
@@ -89,6 +88,6 @@ int seglist_check(void) {
     return 0;
 }
 
-void seglist_dump(void) {
-    printf("(seglist_dump: not implemented)\n");
+void freelist_dump(void) {
+    printf("(freelist_dump: not implemented)\n");
 }

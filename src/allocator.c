@@ -1,5 +1,5 @@
 #include "allocator.h"
-#include "seglist.h"
+#include "freelist.h"
 #include "block.h"
 #include "heap.h"
 
@@ -20,7 +20,7 @@ static void split_block(block_t *b, size_t size) {
         block_set_size(remainder_b, remainder);
         block_set_free(remainder_b, true);
 
-        seglist_insert(remainder_b);
+        freelist_insert(remainder_b);
     }
 }
 
@@ -29,7 +29,7 @@ static void split_block(block_t *b, size_t size) {
 int seg_malloc_init(void) {
     if (heap_init() == -1) return -1;
 
-    seglist_init();
+    freelist_init();
     heap_extend(PAD);
 
     return 0;
@@ -39,12 +39,12 @@ void *seg_malloc(size_t size) {
     if (size == 0) return NULL;
 
     size_t need = block_size_for_payload(size);
-    block_t *b = seglist_find_fit(need);
+    block_t *b = freelist_find_fit(need);
     
     if (b != NULL) {
         // We were able to find a block for
         // the requested payload size to malloc
-        seglist_remove(b);
+        freelist_remove(b);
         split_block(b, need);
 
     } else {
@@ -68,7 +68,7 @@ void seg_free(void *ptr) {
     // Left side is free - coalese-left
     block_t *left = block_prev(b);
     if ((char *)b > (char *)heap_start() + PAD && block_is_free(left)) {
-        seglist_remove(left);
+        freelist_remove(left);
         size_t left_size = block_get_size(left);
 
         block_set_size(left, left_size + b_size);
@@ -79,14 +79,14 @@ void seg_free(void *ptr) {
     // Right side is free - coalese-right
     block_t *right = block_next(b);
     if ((char *)right < (char *)heap_end() && block_is_free(right)) {
-        seglist_remove(right);
+        freelist_remove(right);
         size_t right_size = block_get_size(right);
 
         block_set_size(b, b_size + right_size);
     }
 
     block_set_free(b, true);
-    seglist_insert(b);
+    freelist_insert(b);
 }
 
 void *seg_calloc(size_t nmemb, size_t size) {
@@ -152,7 +152,7 @@ int seg_heap_check(void) {
     // Then, walk the seg list, check
     // 1. all blocks are marked as free
     // 2. it's in the right bucket
-    if (seglist_check() == -1) return -1;
+    if (freelist_check() == -1) return -1;
 
     return 0;
 }
