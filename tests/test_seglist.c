@@ -1,9 +1,5 @@
 #include "seglist.h"
-#include "freelist.h"
-#include "block.h"
 
-#include <stdalign.h>
-#include <stddef.h>
 #include <stdio.h>
 
 static int g_total = 0;
@@ -38,15 +34,6 @@ static int s_fails = 0;
                s_checks - s_fails, s_checks);                              \
     } while (0)
 
-alignas(16) static unsigned char g_arena[1 << 16];
-
-static block_t *make_free_block(size_t offset, size_t size) {
-    block_t *b = (block_t *)(g_arena + offset);
-    block_set_size(b, size);
-    block_set_free(b, true);
-    return b;
-}
-
 static void test_index_for_size(void) {
     SECTION("index_for_size");
     CHECK(seglist_index_for_size(16) == 0);
@@ -68,112 +55,9 @@ static void test_index_for_size(void) {
     SECTION_END();
 }
 
-static void test_insert_find_basic(void) {
-    SECTION("insert + find basic");
-    freelist_init();
-    block_t *b = make_free_block(8, 64);
-    freelist_insert(b);
-
-    CHECK(freelist_find_fit(64) == b);
-    CHECK(freelist_find_fit(48) == b);
-    CHECK(freelist_find_fit(32) == b);
-    CHECK(freelist_find_fit(128) == NULL);
-    SECTION_END();
-}
-
-static void test_find_does_not_remove(void) {
-    SECTION("find does not remove");
-    freelist_init();
-    block_t *b = make_free_block(8, 64);
-    freelist_insert(b);
-
-    CHECK(freelist_find_fit(64) == b);
-    CHECK(freelist_find_fit(64) == b);
-    freelist_remove(b);
-    CHECK(freelist_find_fit(64) == NULL);
-    SECTION_END();
-}
-
-static void test_find_checks_size_within_bucket(void) {
-    SECTION("size check within bucket");
-    freelist_init();
-    block_t *b = make_free_block(8, 48);
-    freelist_insert(b);
-
-    CHECK(freelist_find_fit(48) == b);
-    CHECK(freelist_find_fit(32) == b);
-    CHECK(freelist_find_fit(64) == NULL);
-    SECTION_END();
-}
-
-static void test_find_searches_larger_buckets(void) {
-    SECTION("search larger buckets");
-    freelist_init();
-    block_t *big = make_free_block(8, 128);
-    freelist_insert(big);
-
-    CHECK(freelist_find_fit(48) == big);
-    CHECK(freelist_find_fit(128) == big);
-    CHECK(freelist_find_fit(256) == NULL);
-    SECTION_END();
-}
-
-static void test_remove_middle(void) {
-    SECTION("remove from middle");
-    freelist_init();
-    block_t *a = make_free_block(8, 64);
-    block_t *b = make_free_block(1024 + 8, 64);
-    block_t *c = make_free_block(2048 + 8, 64);
-    freelist_insert(a);
-    freelist_insert(b);
-    freelist_insert(c);
-
-    freelist_remove(b);
-
-    block_t *found[4] = {0};
-    int n = 0;
-    block_t *f;
-    while ((f = freelist_find_fit(64)) != NULL && n < 4) {
-        found[n++] = f;
-        freelist_remove(f);
-    }
-
-    CHECK(n == 2);
-    bool saw_a = false, saw_c = false, saw_b = false;
-    for (int i = 0; i < n; i++) {
-        if (found[i] == a) saw_a = true;
-        if (found[i] == b) saw_b = true;
-        if (found[i] == c) saw_c = true;
-    }
-    CHECK(saw_a);
-    CHECK(saw_c);
-    CHECK(!saw_b);
-    CHECK(freelist_find_fit(64) == NULL);
-    SECTION_END();
-}
-
-static void test_reinsert_after_drain(void) {
-    SECTION("reinsert after drain");
-    freelist_init();
-    block_t *a = make_free_block(8, 64);
-    freelist_insert(a);
-    freelist_remove(a);
-    CHECK(freelist_find_fit(64) == NULL);
-
-    freelist_insert(a);
-    CHECK(freelist_find_fit(64) == a);
-    SECTION_END();
-}
-
 int main(void) {
     printf("running seglist tests\n");
     test_index_for_size();
-    test_insert_find_basic();
-    test_find_does_not_remove();
-    test_find_checks_size_within_bucket();
-    test_find_searches_larger_buckets();
-    test_remove_middle();
-    test_reinsert_after_drain();
 
     printf("\n");
     if (g_total_fail == 0)

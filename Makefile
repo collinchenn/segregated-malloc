@@ -22,12 +22,13 @@ endif
 SRCS := $(SRC_DIR)/heap.c $(SRC_DIR)/block.c $(SRC_DIR)/allocator.c $(FREELIST_SRC)
 OBJS := $(patsubst $(SRC_DIR)/%.c,$(OBJ_DIR)/%.o,$(SRCS))
 
-LIB          := $(OBJ_DIR)/libsegmalloc-$(FREELIST).a
-TEST         := $(OBJ_DIR)/test_allocator
-TEST_BLOCK   := $(OBJ_DIR)/test_block
-TEST_SEGLIST := $(OBJ_DIR)/test_seglist
+LIB           := $(OBJ_DIR)/libsegmalloc-$(FREELIST).a
+TEST          := $(OBJ_DIR)/test_allocator
+TEST_BLOCK    := $(OBJ_DIR)/test_block
+TEST_SEGLIST  := $(OBJ_DIR)/test_seglist
+TEST_FREELIST := $(OBJ_DIR)/test_freelist
 
-.PHONY: all clean test test-alloc test-block test-seglist test-all
+.PHONY: all clean test test-alloc test-block test-seglist test-freelist test-all
 
 all: $(LIB)
 
@@ -50,13 +51,18 @@ test-block: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_block.c $(LIB) -o $(TEST_BLOCK)
 	./$(TEST_BLOCK)
 
-# Build and run the seglist-layer unit tests (segregated backend only)
+# Build and run the seglist-specific unit tests (index_for_size; seg backend only)
 test-seglist: $(LIB)
 	$(CC) $(CFLAGS) $(TEST_DIR)/test_seglist.c $(LIB) -o $(TEST_SEGLIST)
 	./$(TEST_SEGLIST)
 
-# Build and run every layer's tests
-test-all: test-block test-seglist test-alloc
+# Build and run the free-list interface tests against the chosen backend
+test-freelist: $(LIB)
+	$(CC) $(CFLAGS) $(TEST_DIR)/test_freelist.c $(LIB) -o $(TEST_FREELIST)
+	./$(TEST_FREELIST)
+
+# Build and run every layer's tests (segregated backend)
+test-all: test-block test-seglist test-freelist test-alloc
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
