@@ -134,6 +134,29 @@ void *seg_realloc(void *ptr, size_t size) {
 }
 
 int seg_heap_check(void) {
-    (void)split_block; (void)coalesce;
+    // Walk the heap, check
+    // 1. size alignment and >= min_block
+    // 2. header == footer
+    // 3. no two adjacent free blocks
+    char *end = (char *)heap_end();
+    block_t *prev = NULL;
+    block_t *curr = (block_t*)((char *)heap_start() + PAD);
+
+    while ((char *)curr < end) {
+        size_t size = block_get_size(curr);
+        if (size % ALIGNMENT != 0 || size < MIN_BLOCK) return -1;
+        if (!block_is_consistent(curr)) return -1;
+        if (block_is_free(curr) && prev && block_is_free(prev)) return -1;
+
+        prev = curr;
+        curr = block_next(curr);
+    }
+
+    if ((char *)curr != end) return -1;
+
+    // Then, walk the seg list, check
+    // 1. all blocks are marked as free
+    // 2. it's in the right bucket
+
     return 0;
 }
