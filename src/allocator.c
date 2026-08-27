@@ -24,11 +24,6 @@ static void split_block(block_t *b, size_t size) {
     }
 }
 
-static block_t *coalesce(block_t *b) {
-    (void)b; /* TODO */
-    return NULL;
-}
-
 // public APIs
 
 int seg_malloc_init(void) {
