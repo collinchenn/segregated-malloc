@@ -152,6 +152,7 @@ int seg_heap_check(void) {
     // Then, walk the seg list, check
     // 1. all blocks are marked as free
     // 2. it's in the right bucket
+    if (seglist_check() == -1) return -1;
 
     return 0;
 }

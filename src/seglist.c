@@ -74,6 +74,21 @@ block_t *seglist_find_fit(size_t size) {
     return NULL;
 }
 
+int seglist_check(void) {
+    for (int i = 0; i < NUM_SIZE_CLASSES; i++) {
+        block_t *curr = g_buckets[i];
+
+        while (curr) {
+            if (seglist_index_for_size(block_get_size(curr)) != i) return -1;
+            if (!block_is_free(curr)) return -1;
+
+            curr = node(curr)->next;
+        }
+    }
+
+    return 0;
+}
+
 void seglist_dump(void) {
     printf("(seglist_dump: not implemented)\n");
 }
