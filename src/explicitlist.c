@@ -28,15 +28,37 @@ void freelist_insert(block_t *b) {
 }
 
 void freelist_remove(block_t *b) {
-    (void)b;
+    block_t *prev = node(b)->prev;
+    block_t *next = node(b)->next;
+
+    if (prev == NULL) {
+        g_free_list = next;
+    } else {
+        node(prev)->next = next;
+    }
+    
+    if (next != NULL) node(next)->prev = prev;
 }
 
 block_t *freelist_find_fit(size_t size) {
-    (void)size;
+    block_t *curr = g_free_list;
+
+    while (curr) {
+        if (block_get_size(curr) >= size) return curr;
+        curr = node(curr)->next;
+    }
+
     return NULL;
 }
 
 int freelist_check(void) {
+    block_t *curr = g_free_list;
+
+    while (curr) {
+        if (!block_is_free(curr)) return -1;
+        curr = node(curr)->next;
+    }
+
     return 0;
 }
 
