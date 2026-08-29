@@ -64,6 +64,31 @@ test-freelist: $(LIB)
 # Build and run every layer's tests (segregated backend)
 test-all: test-block test-seglist test-freelist test-alloc
 
+# --- Benchmarks (built at -O2, separate from the -O0 test build) ---
+BENCH_DIR    := bench
+BENCH_CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2 -Iinclude -I$(BENCH_DIR)
+BENCH_DRV    := $(BENCH_DIR)/driver.c $(BENCH_DIR)/workloads.c
+BENCH_CORE   := $(SRC_DIR)/heap.c $(SRC_DIR)/block.c $(SRC_DIR)/allocator.c
+
+.PHONY: bench bench-seg bench-explicit bench-glibc
+
+bench: bench-seg bench-explicit bench-glibc
+
+bench-seg: | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"seg"' \
+	    $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/seglist.c -o $(OBJ_DIR)/bench-seg
+	./$(OBJ_DIR)/bench-seg
+
+bench-explicit: | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"explicit"' \
+	    $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/explicitlist.c -o $(OBJ_DIR)/bench-explicit
+	./$(OBJ_DIR)/bench-explicit
+
+bench-glibc: | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"glibc"' -DBENCH_GLIBC \
+	    $(BENCH_DRV) -o $(OBJ_DIR)/bench-glibc
+	./$(OBJ_DIR)/bench-glibc
+
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
 
