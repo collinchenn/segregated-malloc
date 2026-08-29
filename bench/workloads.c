@@ -17,7 +17,8 @@ static unsigned xorshift(unsigned *state) {
 
 // Simulate a valid workload with `num_slots` number
 // of allocated blocks, with `num_ops` operations. 
-// trace is built using `ops`
+// trace is built using `ops`. Return the sequence of ops
+// and other relevant metadata
 static workload_t generate(size_t min_size, size_t max_size, int num_slots,
                            size_t num_ops, unsigned seed, const char *name) {
     op_t *ops = malloc(num_ops * sizeof(op_t));

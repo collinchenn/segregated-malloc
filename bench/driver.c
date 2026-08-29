@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <time.h>
+#include <limits.h>
 
 #ifndef BENCH_LABEL
 #define BENCH_LABEL "unknown"
@@ -62,13 +63,24 @@ static double measure_utilization(const workload_t *w, void **slots) {
 }
 
 static long long measure_throughput_ns(const workload_t *w, void **slots, int reps) {
-    (void)w;
-    (void)slots;
-    (void)reps;
-    (void)now_ns;
-    (void)replay;
-    (void)drain;
-    return 0;
+    long long min_ns = LLONG_MAX;
+
+    // mmap heap is lazily paged, so physical memory isn't attatched
+    // until the pages are touched. We `warm` the pages up by running
+    // once but not recording the time since we will encounter page faults
+    replay(w, slots);
+    drain(slots, w->num_slots);
+
+    for (int i = 0; i < reps; i++) {
+        long long start_ns = now_ns();
+        replay(w, slots);
+        long long elapsed = now_ns() - start_ns;
+
+        min_ns = elapsed < min_ns ? elapsed : min_ns;
+        drain(slots, w->num_slots);
+    }
+
+    return min_ns;
 }
 
 int main(int argc, char **argv) {
