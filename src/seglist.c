@@ -11,8 +11,11 @@ static free_node_t *node(block_t *b) {
     return (free_node_t *)block_payload(b);
 }
 
-/* One list head per size class. Each head points at the first free
- * block in that bucket (intrusive doubly-linked list). */
+#define MIN_BLOCK  (2 * ALIGNMENT)
+#define EXACT_MAX  (MIN_BLOCK + ALIGNMENT * (NUM_SIZE_CLASSES - 2))
+
+/* One list head per size class: exact-size classes (16B apart) up to
+ * EXACT_MAX, then a single catch-all bin for larger blocks. */
 static block_t *g_buckets[NUM_SIZE_CLASSES];
 
 void freelist_init(void) {
@@ -21,13 +24,9 @@ void freelist_init(void) {
 }
 
 int seglist_index_for_size(size_t size) {
-    size_t threshold = 32;
-    for (int i = 0; i < NUM_SIZE_CLASSES - 1; i++) {
-        if (size <= threshold)
-            return i;
-        threshold *= 2;
-    }
-    return NUM_SIZE_CLASSES - 1;
+    if (size <= MIN_BLOCK) return 0;
+    if (size > EXACT_MAX) return NUM_SIZE_CLASSES - 1;
+    return (int)((size - MIN_BLOCK) / ALIGNMENT);
 }
 
 void freelist_insert(block_t *b) {
@@ -36,10 +35,8 @@ void freelist_insert(block_t *b) {
 
     node(b)->next = head;
     node(b)->prev = NULL;
-
     if (head != NULL)
         node(head)->prev = b;
-
     g_buckets[i] = b;
 }
 
@@ -48,25 +45,29 @@ void freelist_remove(block_t *b) {
     block_t *prev = node(b)->prev;
     block_t *next = node(b)->next;
 
-    if (prev == NULL) {
+    if (prev == NULL)
         g_buckets[i] = next;
-    } else {
+    else
         node(prev)->next = next;
-    }
 
     if (next != NULL)
         node(next)->prev = prev;
 }
 
 block_t *freelist_find_fit(size_t size) {
-    for (int i = seglist_index_for_size(size); i < NUM_SIZE_CLASSES; i++) {
-        block_t *head = g_buckets[i];
+    for (int j = seglist_index_for_size(size); j < NUM_SIZE_CLASSES; j++) {
+        block_t *head = g_buckets[j];
 
-        while (head != NULL) {
-            if (block_get_size(head) >= size)
-                return head;
-
-            head = node(head)->next;
+        // Only search if we're in the catch-all category
+        // where allocating without checking can be wasteful
+        if (j == NUM_SIZE_CLASSES - 1) {
+            while (head != NULL) {
+                if (block_get_size(head) >= size)
+                    return head;
+                head = node(head)->next;
+            }
+        } else if (head != NULL) {
+            return head;
         }
     }
 
@@ -74,13 +75,11 @@ block_t *freelist_find_fit(size_t size) {
 }
 
 int freelist_check(void) {
-    for (int i = 0; i < NUM_SIZE_CLASSES; i++) {
-        block_t *curr = g_buckets[i];
-
-        while (curr) {
-            if (seglist_index_for_size(block_get_size(curr)) != i) return -1;
+    for (int j = 0; j < NUM_SIZE_CLASSES; j++) {
+        block_t *curr = g_buckets[j];
+        while (curr != NULL) {
             if (!block_is_free(curr)) return -1;
-
+            if (seglist_index_for_size(block_get_size(curr)) != j) return -1;
             curr = node(curr)->next;
         }
     }

@@ -38,20 +38,14 @@ static void test_index_for_size(void) {
     SECTION("index_for_size");
     CHECK(seglist_index_for_size(16) == 0);
     CHECK(seglist_index_for_size(32) == 0);
-    CHECK(seglist_index_for_size(33) == 1);
-    CHECK(seglist_index_for_size(64) == 1);
-    CHECK(seglist_index_for_size(65) == 2);
-    CHECK(seglist_index_for_size(128) == 2);
-    CHECK(seglist_index_for_size(129) == 3);
-    CHECK(seglist_index_for_size(256) == 3);
-    CHECK(seglist_index_for_size(257) == 4);
-    CHECK(seglist_index_for_size(512) == 4);
-    CHECK(seglist_index_for_size(1024) == 5);
-    CHECK(seglist_index_for_size(262144) == 13);
-    CHECK(seglist_index_for_size(262145) == 14);
-    CHECK(seglist_index_for_size(524288) == 14);
-    CHECK(seglist_index_for_size(524289) == 15);
-    CHECK(seglist_index_for_size(1u << 24) == 15);
+    CHECK(seglist_index_for_size(48) == 1);
+    CHECK(seglist_index_for_size(64) == 2);
+    CHECK(seglist_index_for_size(80) == 3);
+    CHECK(seglist_index_for_size(512) == 30);
+    CHECK(seglist_index_for_size(1024) == 62);
+    CHECK(seglist_index_for_size(1040) == 63);
+    CHECK(seglist_index_for_size(4096) == 63);
+    CHECK(seglist_index_for_size(1u << 20) == 63);
     SECTION_END();
 }
 

@@ -69,25 +69,41 @@ BENCH_DIR    := bench
 BENCH_CFLAGS := -std=c11 -Wall -Wextra -Wpedantic -O2 -Iinclude -I$(BENCH_DIR)
 BENCH_DRV    := $(BENCH_DIR)/driver.c $(BENCH_DIR)/workloads.c
 BENCH_CORE   := $(SRC_DIR)/heap.c $(SRC_DIR)/block.c $(SRC_DIR)/allocator.c
+BENCH_BINS   := $(OBJ_DIR)/bench-seg $(OBJ_DIR)/bench-explicit $(OBJ_DIR)/bench-glibc
 
-.PHONY: bench bench-seg bench-explicit bench-glibc
+# Live-set sizes (num_slots) to sweep in bench-sweep
+SWEEP_SLOTS  := 1024 16384 65536 262144
 
-bench: bench-seg bench-explicit bench-glibc
+.PHONY: bench bench-seg bench-explicit bench-glibc bench-sweep
 
-bench-seg: | $(OBJ_DIR)
-	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"seg"' \
-	    $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/seglist.c -o $(OBJ_DIR)/bench-seg
-	./$(OBJ_DIR)/bench-seg
+# --- build the benchmark binaries ---
+$(OBJ_DIR)/bench-seg: $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/seglist.c | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"seg"' $^ -o $@
 
-bench-explicit: | $(OBJ_DIR)
-	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"explicit"' \
-	    $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/explicitlist.c -o $(OBJ_DIR)/bench-explicit
-	./$(OBJ_DIR)/bench-explicit
+$(OBJ_DIR)/bench-explicit: $(BENCH_DRV) $(BENCH_CORE) $(SRC_DIR)/explicitlist.c | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"explicit"' $^ -o $@
 
-bench-glibc: | $(OBJ_DIR)
-	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"glibc"' -DBENCH_GLIBC \
-	    $(BENCH_DRV) -o $(OBJ_DIR)/bench-glibc
-	./$(OBJ_DIR)/bench-glibc
+$(OBJ_DIR)/bench-glibc: $(BENCH_DRV) | $(OBJ_DIR)
+	$(CC) $(BENCH_CFLAGS) -DBENCH_LABEL='"glibc"' -DBENCH_GLIBC $^ -o $@
+
+# --- run each once at default settings ---
+bench: $(BENCH_BINS)
+	@for b in $(BENCH_BINS); do $$b; done
+
+bench-seg: $(OBJ_DIR)/bench-seg
+	./$<
+bench-explicit: $(OBJ_DIR)/bench-explicit
+	./$<
+bench-glibc: $(OBJ_DIR)/bench-glibc
+	./$<
+
+# --- sweep the live-set size across all three backends ---
+bench-sweep: $(BENCH_BINS)
+	@for n in $(SWEEP_SLOTS); do \
+	  echo "=== num_slots=$$n ==="; \
+	  for b in $(BENCH_BINS); do $$b random 1000000 5 $$n; done; \
+	  echo ""; \
+	done
 
 $(OBJ_DIR):
 	mkdir -p $(OBJ_DIR)
