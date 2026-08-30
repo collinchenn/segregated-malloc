@@ -83,6 +83,40 @@ static long long measure_throughput_ns(const workload_t *w, void **slots, int re
     return min_ns;
 }
 
+static int cmp_ll(const void *a, const void *b) {
+    long long x = *(const long long *)a;
+    long long y = *(const long long *)b;
+    return (x > y) - (x < y);
+}
+
+static long long percentile(const long long *sorted, size_t n, double p) {
+    if (n == 0) return 0;
+    size_t idx = (size_t)(p * (double)(n - 1));
+    return sorted[idx];
+}
+
+static size_t measure_latency(const workload_t *w, void **slots, long long *samples) {
+    replay(w, slots);
+    drain(slots, w->num_slots);
+
+    size_t n = 0;
+    for (size_t i = 0; i < w->num_ops; i++) {
+        const op_t *op = &w->ops[i];
+        if (op->kind == OP_MALLOC) {
+            long long t0 = now_ns();
+            slots[op->slot] = bench_malloc(op->size);
+            long long t1 = now_ns();
+            samples[n++] = t1 - t0;
+        } else {
+            bench_free(slots[op->slot]);
+            slots[op->slot] = NULL;
+        }
+    }
+
+    drain(slots, w->num_slots);
+    return n;
+}
+
 int main(int argc, char **argv) {
     const char *wl   = argc > 1 ? argv[1] : "random";
     size_t num_ops   = argc > 2 ? strtoull(argv[2], NULL, 10) : 1000000;
@@ -102,8 +136,16 @@ int main(int argc, char **argv) {
 
     void **slots = calloc((size_t)num_slots, sizeof(void *));
 
+    long long *samples = malloc(w.num_ops * sizeof(long long));
+
     double util = measure_utilization(&w, slots);
     long long min_ns = measure_throughput_ns(&w, slots, reps);
+    size_t nsamples = measure_latency(&w, slots, samples);
+
+    qsort(samples, nsamples, sizeof(long long), cmp_ll);
+    long long p99  = percentile(samples, nsamples, 0.99);
+    long long p999 = percentile(samples, nsamples, 0.999);
+    long long pmax = nsamples ? samples[nsamples - 1] : 0;
 
     printf("[%-8s] workload=%-6s ops=%zu reps=%d  ",
            BENCH_LABEL, w.name, w.num_ops, reps);
@@ -114,10 +156,12 @@ int main(int argc, char **argv) {
         printf("throughput=TODO       ");
     }
     if (util > 0.0)
-        printf("util=%.1f%%\n", util * 100.0);
+        printf("util=%.1f%%  ", util * 100.0);
     else
-        printf("util=n/a\n");
+        printf("util=n/a    ");
+    printf("p99=%lldns p99.9=%lldns max=%lldns\n", p99, p999, pmax);
 
+    free(samples);
     free(slots);
     workload_free(&w);
     return 0;
