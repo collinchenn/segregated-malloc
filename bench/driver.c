@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
     const char *wl   = argc > 1 ? argv[1] : "random";
     size_t num_ops   = argc > 2 ? strtoull(argv[2], NULL, 10) : 1000000;
     int    reps      = argc > 3 ? atoi(argv[3]) : 5;
-    int    num_slots = 1024;
+    int    num_slots = argc > 4 ? atoi(argv[4]) : 1024;
 
     workload_t w;
     if (strcmp(wl, "fixed") == 0)
