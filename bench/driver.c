@@ -122,12 +122,14 @@ int main(int argc, char **argv) {
     size_t num_ops   = argc > 2 ? strtoull(argv[2], NULL, 10) : 1000000;
     int    reps      = argc > 3 ? atoi(argv[3]) : 5;
     int    num_slots = argc > 4 ? atoi(argv[4]) : 1024;
+    size_t min_size  = argc > 5 ? strtoull(argv[5], NULL, 10) : 16;
+    size_t max_size  = argc > 6 ? strtoull(argv[6], NULL, 10) : 512;
 
     workload_t w;
     if (strcmp(wl, "fixed") == 0)
-        w = workload_fixed_size(64, num_slots, num_ops, 1);
+        w = workload_fixed_size(min_size, num_slots, num_ops, 1);
     else
-        w = workload_random(16, 512, num_slots, num_ops, 1);
+        w = workload_random(min_size, max_size, num_slots, num_ops, 1);
 
     if (bench_init() != 0) {
         fprintf(stderr, "bench_init failed\n");

@@ -11,12 +11,18 @@ static free_node_t *node(block_t *b) {
     return (free_node_t *)block_payload(b);
 }
 
-#define MIN_BLOCK  (2 * ALIGNMENT)
-#define EXACT_MAX  (MIN_BLOCK + ALIGNMENT * (NUM_SIZE_CLASSES - 2))
+#define MIN_BLOCK      (2 * ALIGNMENT)
+#define SMALL_MAX      512
+#define EXACT_COUNT    (((SMALL_MAX - MIN_BLOCK) / ALIGNMENT) + 1)
+#define FIRST_LOG_EXP  9
 
-/* One list head per size class: exact-size classes (16B apart) up to
- * EXACT_MAX, then a single catch-all bin for larger blocks. */
+/* Exact-size classes (16B apart) up to SMALL_MAX, then power-of-two
+ * (log-spaced) classes for larger blocks, with the last as a catch-all. */
 static block_t *g_buckets[NUM_SIZE_CLASSES];
+
+static int highest_bit(size_t x) {
+    return 63 - __builtin_clzll((unsigned long long)x);
+}
 
 void freelist_init(void) {
     for (int i = 0; i < NUM_SIZE_CLASSES; i++)
@@ -25,8 +31,14 @@ void freelist_init(void) {
 
 int seglist_index_for_size(size_t size) {
     if (size <= MIN_BLOCK) return 0;
-    if (size > EXACT_MAX) return NUM_SIZE_CLASSES - 1;
-    return (int)((size - MIN_BLOCK) / ALIGNMENT);
+    if (size <= SMALL_MAX)
+        return (int)((size - MIN_BLOCK) / ALIGNMENT);
+
+    size_t m = size - 1;
+    int e = highest_bit(m);
+    int sub = (int)((m >> (e - 2)) & 0x3);
+    int idx = EXACT_COUNT + (e - FIRST_LOG_EXP) * 4 + sub;
+    return idx < NUM_SIZE_CLASSES ? idx : NUM_SIZE_CLASSES - 1;
 }
 
 void freelist_insert(block_t *b) {
@@ -55,12 +67,11 @@ void freelist_remove(block_t *b) {
 }
 
 block_t *freelist_find_fit(size_t size) {
-    for (int j = seglist_index_for_size(size); j < NUM_SIZE_CLASSES; j++) {
+    int start = seglist_index_for_size(size);
+    for (int j = start; j < NUM_SIZE_CLASSES; j++) {
         block_t *head = g_buckets[j];
 
-        // Only search if we're in the catch-all category
-        // where allocating without checking can be wasteful
-        if (j == NUM_SIZE_CLASSES - 1) {
+        if (j == start) {
             while (head != NULL) {
                 if (block_get_size(head) >= size)
                     return head;

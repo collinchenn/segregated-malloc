@@ -42,9 +42,11 @@ static void test_index_for_size(void) {
     CHECK(seglist_index_for_size(64) == 2);
     CHECK(seglist_index_for_size(80) == 3);
     CHECK(seglist_index_for_size(512) == 30);
-    CHECK(seglist_index_for_size(1024) == 62);
-    CHECK(seglist_index_for_size(1040) == 63);
-    CHECK(seglist_index_for_size(4096) == 63);
+    CHECK(seglist_index_for_size(513) == 31);
+    CHECK(seglist_index_for_size(1024) == 34);
+    CHECK(seglist_index_for_size(1025) == 35);
+    CHECK(seglist_index_for_size(2048) == 38);
+    CHECK(seglist_index_for_size(4096) == 42);
     CHECK(seglist_index_for_size(1u << 20) == 63);
     SECTION_END();
 }
